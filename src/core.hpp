@@ -68,7 +68,7 @@ namespace cs {
 	class thread final {
 		thread_status mStatus=thread_status::ready;
 		const std::deque<instruction_base*> mIns;
-		std::size_t mPosit=0;
+		std::size_t mPosit=1;
 	public:
 		thread()=delete;
 		thread(const std::deque<instruction_base*>& ins):mIns(ins) {}
@@ -90,16 +90,16 @@ namespace cs {
 		{
 			if(mStatus!=thread_status::ready)
 				throw cs::lang_error("CSLE0001");
-			for(; mPosit<mIns.size(); ++mPosit)
-				mIns.at(mPosit)->exec(vm,this);
+			for(; mPosit-1<mIns.size(); ++mPosit)
+				mIns.at(mPosit-1)->exec(vm,this);
 			mPosit=0;
 		}
 		void exec(virtual_machine* vm)
 		{
 			if(mStatus==thread_status::finish)
 				throw cs::lang_error("CSLE0002");
-			mIns.at(mPosit)->exec(vm,this);
-			if(++mPosit>=mIns.size())
+			mIns.at(mPosit-1)->exec(vm,this);
+			if(++mPosit-1>=mIns.size())
 				mStatus=thread_status::finish;
 		}
 	};
