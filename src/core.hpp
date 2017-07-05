@@ -21,6 +21,7 @@
 *
 * Version: 1.0.0
 */
+#include <memory>
 #include <string>
 #include <deque>
 #include <list>
@@ -105,9 +106,8 @@ namespace cs {
 	};
 	class virtual_machine final {
 		using var_pointer_t=cov::storage<var,var_pool_size>::pointer;
-		using thread_pointer_t=cov::storage<thread,thread_pool_size>::pointer;
+		using thread_pointer_t=std::shared_ptr<thread>;
 		cov::storage<var,var_pool_size> var_pool;
-		cov::storage<thread,thread_pool_size> thread_pool;
 		std::list<var_pointer_t> var_free_list;
 		std::list<thread_pointer_t> thread_list;
 	public:
@@ -116,17 +116,13 @@ namespace cs {
 		~virtual_machine()=default;
 		thread_pointer_t create_thread(const std::deque<instruction_base*>& ins)
 		{
-			return thread_pool.alloc(ins);
-		}
-		void free_thread(thread_pointer_t tptr)
-		{
-			thread_pool.free(tptr);
+			return std::make_shared<thread>(ins);
 		}
 		void join_thread(thread_pointer_t th)
 		{
-			if(thread_pool.get(th).get_status()!=thread_status::ready)
+			if(th->get_status()!=thread_status::ready)
 				throw lang_error("CSLE0003");
-			thread_pool.get(th).set_status(thread_status::busy);
+			th->set_status(thread_status::busy);
 			thread_list.push_back(th);
 		}
 		var_pointer_t create_var()
@@ -146,13 +142,12 @@ namespace cs {
 		void start()
 		{
 			while(!thread_list.empty()) {
-				thread_list.remove_if([&](const thread_pointer_t& th) {
-					return thread_pool.get(th).get_status()==thread_status::finish;
+				thread_list.remove_if([](const thread_pointer_t& th) {
+					return th->get_status()==thread_status::finish;
 				});
-				for(auto& ptr:thread_list) {
-					thread& th=thread_pool.get(ptr);
-					if(th.get_status()!=thread_status::idle&&th.get_status()!=thread_status::finish)
-						th.exec(this);
+				for(auto& th:thread_list) {
+					if(th->get_status()!=thread_status::idle&&th->get_status()!=thread_status::finish)
+						th->exec(this);
 				}
 			}
 		}
